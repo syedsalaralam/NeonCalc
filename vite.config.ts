@@ -12,7 +12,8 @@ export default defineConfig(({ mode }) => {
     define: {
       // This ensures process.env.API_KEY works in the browser by replacing it 
       // with the actual value during the build process.
-      'process.env.API_KEY': JSON.stringify(env.API_KEY)
+      // We use || '' to ensure it is replaced with an empty string if undefined, preventing browser crashes.
+      'process.env.API_KEY': JSON.stringify(env.API_KEY || '')
     }
   };
 });
