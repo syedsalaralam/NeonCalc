@@ -134,36 +134,43 @@ const Calculator: React.FC = () => {
   });
 
   const buttons = [
+    // Row 1: Basic Functions
     { label: 'C', type: 'func', action: handleClear, wide: false },
     { label: '±', type: 'func', action: () => setDisplay((parseFloat(display) * -1).toString()) },
     { label: '%', type: 'func', action: () => setDisplay((parseFloat(display) / 100).toString()) },
     { label: '÷', type: 'op', action: () => handleOperator('/') },
     
+    // Row 2: Scientific 1
     { label: 'sin', type: 'sci', action: () => handleScientific('sin') },
     { label: 'cos', type: 'sci', action: () => handleScientific('cos') },
     { label: 'tan', type: 'sci', action: () => handleScientific('tan') },
     { label: 'deg/rad', type: 'sci', action: () => setIsRadians(!isRadians) },
 
-    { label: '7', type: 'num', action: () => handleNumber('7') },
-    { label: '8', type: 'num', action: () => handleNumber('8') },
-    { label: '9', type: 'num', action: () => handleNumber('9') },
-    { label: '×', type: 'op', action: () => handleOperator('*') },
-
+    // Row 3: Scientific 2
     { label: 'x²', type: 'sci', action: () => handleScientific('pow2') },
     { label: '√', type: 'sci', action: () => handleScientific('sqrt') },
     { label: 'log', type: 'sci', action: () => handleScientific('log') },
     { label: 'ln', type: 'sci', action: () => handleScientific('ln') },
 
+    // Row 4: Numbers
+    { label: '7', type: 'num', action: () => handleNumber('7') },
+    { label: '8', type: 'num', action: () => handleNumber('8') },
+    { label: '9', type: 'num', action: () => handleNumber('9') },
+    { label: '×', type: 'op', action: () => handleOperator('*') },
+
+    // Row 5: Numbers
     { label: '4', type: 'num', action: () => handleNumber('4') },
     { label: '5', type: 'num', action: () => handleNumber('5') },
     { label: '6', type: 'num', action: () => handleNumber('6') },
     { label: '-', type: 'op', action: () => handleOperator('-') },
 
+    // Row 6: Numbers
     { label: '1', type: 'num', action: () => handleNumber('1') },
     { label: '2', type: 'num', action: () => handleNumber('2') },
     { label: '3', type: 'num', action: () => handleNumber('3') },
     { label: '+', type: 'op', action: () => handleOperator('+') },
 
+    // Row 7: Zero and equals
     { label: '0', type: 'num', action: () => handleNumber('0'), wide: true },
     { label: '.', type: 'num', action: () => handleNumber('.') },
     { label: '=', type: 'eq', action: calculate },
