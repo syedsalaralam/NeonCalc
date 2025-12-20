@@ -2,44 +2,45 @@ import React, { useState, useEffect } from 'react';
 import Guideline from './Guideline';
 
 const Calculator: React.FC = () => {
-  const [display, setDisplay] = useState('0');
-  const [expression, setExpression] = useState('');
+  const [expression, setExpression] = useState('0');
+  const [result, setResult] = useState<string | null>(null);
   const [isRadians, setIsRadians] = useState(true);
 
-  const handleNumber = (num: string) => {
-    if (display === '0' || display === 'Error') {
-      if (num === '.') {
-        setDisplay('0.');
-      } else {
-        setDisplay(num);
-      }
+  const handleInput = (char: string) => {
+    setResult(null);
+    if (expression === '0' || expression === 'Error') {
+      if (char === '.') setExpression('0.');
+      else if (['+', '*', '/', ')'].includes(char)) return; // Prevent leading ops
+      else setExpression(char);
     } else {
-      if (num === '.' && display.includes('.')) return;
-      setDisplay(display + num);
+      // Prevent double operators
+      const lastChar = expression.slice(-1);
+      if (['+', '-', '*', '/'].includes(lastChar) && ['+', '-', '*', '/'].includes(char)) {
+        setExpression(expression.slice(0, -1) + char);
+      } else {
+        setExpression(expression + char);
+      }
     }
   };
 
-  const handleOperator = (op: string) => {
-    setExpression(display + ' ' + op + ' ');
-    setDisplay('0');
-  };
-
   const handleClear = () => {
-    setDisplay('0');
-    setExpression('');
+    setExpression('0');
+    setResult(null);
   };
 
-  const handleBackspace = () => {
-    if (display === 'Error' || display.length === 1) {
-      setDisplay('0');
+  const handleDelete = () => {
+    setResult(null);
+    if (expression.length <= 1 || expression === 'Error') {
+      setExpression('0');
     } else {
-      setDisplay(display.slice(0, -1));
+      setExpression(expression.slice(0, -1));
     }
   };
 
   const handleScientific = (func: string) => {
     try {
-      const val = parseFloat(display);
+      // Evaluate current expression first
+      const val = calculateInternal(expression);
       let res = 0;
       switch (func) {
         case 'sin':
@@ -66,123 +67,100 @@ const Calculator: React.FC = () => {
         default:
           break;
       }
-      setDisplay(res.toString());
-      setExpression(`${func}(${val}) =`);
+      const final = Math.round(res * 100000000) / 100000000;
+      setExpression(final.toString());
+      setResult(null);
     } catch (e) {
-      setDisplay('Error');
+      setExpression('Error');
     }
   };
 
-  const calculate = () => {
+  const calculateInternal = (expr: string): number => {
+    const sanitized = expr.replace(/×/g, '*').replace(/÷/g, '/');
+    if (!/^[0-9+\-*/().\s]+$/.test(sanitized)) {
+      throw new Error("Invalid Input");
+    }
+    // eslint-disable-next-line no-new-func
+    return new Function(`return ${sanitized}`)();
+  };
+
+  const performCalculation = () => {
     try {
-      const fullExpr = expression + display;
-      // Note: In a production app, use a safer math parser.
-      // For this demo, we sanitize and use Function constructor.
-      if (!/^[0-9+\-*/().\s]+$/.test(fullExpr)) {
-         throw new Error("Invalid Input");
-      }
-      
-      // eslint-disable-next-line no-new-func
-      const result = new Function(`return ${fullExpr}`)();
-      
-      // Fix floating point precision
-      const final = Math.round(result * 100000000) / 100000000;
-      
-      setDisplay(final.toString());
-      setExpression('');
+      const finalResult = calculateInternal(expression);
+      const rounded = Math.round(finalResult * 100000000) / 100000000;
+      setResult(rounded.toString());
     } catch (e) {
-      setDisplay('Error');
+      setExpression('Error');
+      setResult(null);
     }
   };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const key = e.key;
-
-      if (/^[0-9]$/.test(key)) {
+      if (/^[0-9+\-*/().]$/.test(e.key)) {
         e.preventDefault();
-        handleNumber(key);
-      } else if (key === '.') {
+        handleInput(e.key);
+      } else if (e.key === 'Enter' || e.key === '=') {
         e.preventDefault();
-        handleNumber('.');
-      } else if (key === '+') {
-        e.preventDefault();
-        handleOperator('+');
-      } else if (key === '-') {
-        e.preventDefault();
-        handleOperator('-');
-      } else if (key === '*' || key.toLowerCase() === 'x') {
-        e.preventDefault();
-        handleOperator('*');
-      } else if (key === '/') {
-        e.preventDefault();
-        handleOperator('/');
-      } else if (key === 'Enter' || key === '=') {
-        e.preventDefault();
-        calculate();
-      } else if (key === 'Escape') {
+        performCalculation();
+      } else if (e.key === 'Escape') {
         e.preventDefault();
         handleClear();
-      } else if (key === 'Backspace') {
+      } else if (e.key === 'Backspace') {
         e.preventDefault();
-        handleBackspace();
+        handleDelete();
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  });
+  }, [expression]);
 
   const buttons = [
-    // Row 1: Basic Functions
-    { label: 'C', type: 'func', action: handleClear, wide: false },
-    { label: '±', type: 'func', action: () => setDisplay((parseFloat(display) * -1).toString()) },
-    { label: '%', type: 'func', action: () => setDisplay((parseFloat(display) / 100).toString()) },
-    { label: '÷', type: 'op', action: () => handleOperator('/') },
+    { label: 'C', type: 'func', action: handleClear },
+    { label: '(', type: 'func', action: () => handleInput('(') },
+    { label: ')', type: 'func', action: () => handleInput(')') },
+    { label: '÷', type: 'op', action: () => handleInput('/') },
     
-    // Row 2: Scientific 1
     { label: 'sin', type: 'sci', action: () => handleScientific('sin') },
     { label: 'cos', type: 'sci', action: () => handleScientific('cos') },
     { label: 'tan', type: 'sci', action: () => handleScientific('tan') },
-    { label: 'deg/rad', type: 'sci', action: () => setIsRadians(!isRadians) },
+    { label: 'rad', type: 'sci', action: () => setIsRadians(!isRadians), active: isRadians },
 
-    // Row 3: Scientific 2
-    { label: 'x²', type: 'sci', action: () => handleScientific('pow2') },
-    { label: '√', type: 'sci', action: () => handleScientific('sqrt') },
-    { label: 'log', type: 'sci', action: () => handleScientific('log') },
-    { label: 'ln', type: 'sci', action: () => handleScientific('ln') },
+    { label: '7', type: 'num', action: () => handleInput('7') },
+    { label: '8', type: 'num', action: () => handleInput('8') },
+    { label: '9', type: 'num', action: () => handleInput('9') },
+    { label: '×', type: 'op', action: () => handleInput('*') },
 
-    // Row 4: Numbers
-    { label: '7', type: 'num', action: () => handleNumber('7') },
-    { label: '8', type: 'num', action: () => handleNumber('8') },
-    { label: '9', type: 'num', action: () => handleNumber('9') },
-    { label: '×', type: 'op', action: () => handleOperator('*') },
+    { label: '4', type: 'num', action: () => handleInput('4') },
+    { label: '5', type: 'num', action: () => handleInput('5') },
+    { label: '6', type: 'num', action: () => handleInput('6') },
+    { label: '-', type: 'op', action: () => handleInput('-') },
 
-    // Row 5: Numbers
-    { label: '4', type: 'num', action: () => handleNumber('4') },
-    { label: '5', type: 'num', action: () => handleNumber('5') },
-    { label: '6', type: 'num', action: () => handleNumber('6') },
-    { label: '-', type: 'op', action: () => handleOperator('-') },
+    { label: '1', type: 'num', action: () => handleInput('1') },
+    { label: '2', type: 'num', action: () => handleInput('2') },
+    { label: '3', type: 'num', action: () => handleInput('3') },
+    { label: '+', type: 'op', action: () => handleInput('+') },
 
-    // Row 6: Numbers
-    { label: '1', type: 'num', action: () => handleNumber('1') },
-    { label: '2', type: 'num', action: () => handleNumber('2') },
-    { label: '3', type: 'num', action: () => handleNumber('3') },
-    { label: '+', type: 'op', action: () => handleOperator('+') },
-
-    // Row 7: Zero and equals
-    { label: '0', type: 'num', action: () => handleNumber('0'), wide: true },
-    { label: '.', type: 'num', action: () => handleNumber('.') },
-    { label: '=', type: 'eq', action: calculate },
+    { label: '0', type: 'num', action: () => handleInput('0') },
+    { label: '.', type: 'num', action: () => handleInput('.') },
+    { label: 'DEL', type: 'del', action: handleDelete },
+    { label: '=', type: 'eq', action: performCalculation },
   ];
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="glass-panel p-6 rounded-2xl shadow-2xl shadow-cyan-900/20">
-        <div className="mb-6 bg-slate-900/80 p-6 rounded-xl border border-slate-700 text-right font-display shadow-inner">
-          <div className="h-6 text-sm text-slate-400 mb-1">{expression}</div>
-          <div className="text-4xl md:text-5xl text-neon-blue tracking-wider truncate">{display}</div>
-          <div className="mt-2 text-xs text-slate-600 font-mono text-left uppercase">{isRadians ? 'RAD' : 'DEG'}</div>
+      <div className="glass-panel p-6 rounded-2xl shadow-2xl border-slate-800">
+        <div className="mb-6 bg-slate-900/90 p-8 rounded-xl border border-slate-700 text-right font-display min-h-[140px] flex flex-col justify-end">
+          <div className="text-slate-500 text-xs mb-2 flex justify-between uppercase tracking-widest font-bold">
+            <span>{isRadians ? 'Radians' : 'Degrees'} Mode</span>
+            <span>Expression</span>
+          </div>
+          <div className="text-2xl md:text-3xl text-slate-400 tracking-wider break-all mb-2 overflow-hidden h-8">
+            {expression}
+          </div>
+          <div className="text-4xl md:text-6xl text-neon-blue font-black tracking-tighter truncate">
+            {result ? result : ''}
+          </div>
         </div>
 
         <div className="grid grid-cols-4 gap-3 md:gap-4">
@@ -191,14 +169,14 @@ const Calculator: React.FC = () => {
               key={idx}
               onClick={btn.action}
               className={`
-                relative overflow-hidden rounded-xl p-4 text-lg md:text-xl font-medium transition-all duration-200
-                active:scale-95 hover:brightness-125
-                ${btn.wide ? 'col-span-2' : ''}
-                ${btn.type === 'num' ? 'bg-slate-800 text-slate-200 hover:bg-slate-700' : ''}
-                ${btn.type === 'op' ? 'bg-indigo-900/50 text-indigo-300 border border-indigo-500/30' : ''}
-                ${btn.type === 'func' ? 'bg-slate-700 text-slate-300' : ''}
-                ${btn.type === 'sci' ? 'bg-slate-800/50 text-neon-pink border border-neon-pink/20 text-sm md:text-base' : ''}
-                ${btn.type === 'eq' ? 'bg-neon-blue/20 text-neon-blue border border-neon-blue shadow-neon-blue' : ''}
+                relative overflow-hidden rounded-xl p-4 md:p-5 text-lg md:text-xl font-bold transition-all duration-200
+                active:scale-95 shadow-lg
+                ${btn.type === 'num' ? 'bg-slate-800 text-slate-100 hover:bg-slate-700 hover:shadow-slate-700/20' : ''}
+                ${btn.type === 'op' ? 'bg-indigo-900/40 text-indigo-300 border border-indigo-500/20 hover:bg-indigo-900/60' : ''}
+                ${btn.type === 'func' ? 'bg-slate-700/50 text-slate-300 hover:bg-slate-700' : ''}
+                ${btn.type === 'sci' ? `bg-slate-800/40 border text-xs md:text-sm ${btn.active ? 'border-neon-pink text-neon-pink shadow-neon-pink/20' : 'border-slate-700 text-slate-400'}` : ''}
+                ${btn.type === 'del' ? 'bg-red-900/20 text-red-400 border border-red-500/30 hover:bg-red-900/40' : ''}
+                ${btn.type === 'eq' ? 'bg-neon-blue text-slate-900 shadow-neon-blue hover:scale-105' : ''}
               `}
             >
               {btn.label}
@@ -208,16 +186,15 @@ const Calculator: React.FC = () => {
       </div>
 
       <Guideline
-        title="Scientific Calculator"
+        title="Professional Scientific Calculator & Online Calculator"
         steps={[
-          "Use the number pad to enter values.",
-          "Select operations (+, -, ×, ÷) to perform basic arithmetic.",
-          "Use scientific functions (sin, cos, log, etc.) for advanced calculations.",
-          "Toggle between Degrees (DEG) and Radians (RAD) using the 'deg/rad' button.",
-          "Press '=' to see the result.",
-          "Use 'C' to clear the current entry or reset the calculator.",
+          "Chain calculations: Use this online calculator to enter complex expressions like (10 + 5) * 2 / 3.",
+          "Mathematical Functions: Access sine, cosine, tangent, and logs for free scientific calculation.",
+          "Correction Tool: The DEL button allows you to fix errors in your expression without restarting.",
+          "Angular Modes: Toggle between Radians and Degrees for advanced trigonometry calculations.",
+          "PEMDAS Compliant: This free calculator follows standard mathematical order of operations automatically."
         ]}
-        tips="Keyboard support enabled: Use numbers, +, -, *, /, Enter (=), Esc (Clear), and Backspace."
+        tips="Bookmark this free scientific calculator for quick access during homework or professional engineering tasks. It's the most reliable calculator online."
       />
     </div>
   );

@@ -1,7 +1,12 @@
 export enum AppView {
+  HOME = 'HOME',
   CALCULATOR = 'CALCULATOR',
   CONVERTER = 'CONVERTER',
   GAME = 'GAME',
+  BLOG = 'BLOG',
+  PRIVACY = 'PRIVACY',
+  TERMS = 'TERMS',
+  ABOUT = 'ABOUT'
 }
 
 export interface MathQuestion {
